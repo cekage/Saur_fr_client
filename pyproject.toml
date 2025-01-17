@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "saur_client"
+version = "0.1.0"
+description = "Client Python pour interagir avec l'API SAUR"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" } 
+authors = [
+    { name = "Cekage Dave", email = "github@cekage.net" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",  
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/cekage/Saur_fr_client"
+"Bug Tracker" = "http://github.com/cekage/Saur_fr_client/issues"
