@@ -78,7 +78,7 @@ Ce projet est sous licence [MIT License](LICENSE) - consultez le fichier [LICENS
 
 ### Remerciements
 
-[Vous pouvez remercier ici les personnes ou les projets qui vous ont aidé.]
+Wife and kids, for everything ! 
 
 ---
 
@@ -157,5 +157,4 @@ This project is licensed under the [MIT License](LICENSE) - see the [LICENSE](LI
 
 ### Acknowledgements
 
-[You can acknowledge here people or projects that helped you.]
-```
+Wife and kids, for everything ! 
