@@ -160,7 +160,9 @@ class SaurClient:
         )
         return await self._async_request(method="GET", url=url)
 
-    async def get_lastknown_data(self) -> Optional[Dict[str, Any]]:
+    async def get_lastknown_data(
+      self
+    ) -> Optional[Dict[str, Any]]:
         """Récupère les dernières données connues.
 
         Returns:
@@ -170,7 +172,9 @@ class SaurClient:
         url = self.LAST_URL.format(default_section_id=self.default_section_id)
         return await self._async_request(method="GET", url=url)
 
-    async def get_deliverypoints_data(self) -> Optional[Dict[str, Any]]:
+    async def get_deliverypoints_data(
+      self
+    ) -> Optional[Dict[str, Any]]:
         """Récupère les points de livraison.
 
         Returns:
