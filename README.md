@@ -1,8 +1,3 @@
-## README.md multilingue pour saur_client
-
-Voici le texte du `README.md` en français et en anglais :
-
-```markdown
 # saur_client
 
 [![PyPI version](https://badge.fury.io/py/saur_client.svg)](https://badge.fury.io/py/saur_client)
