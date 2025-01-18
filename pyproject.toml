@@ -1,24 +1,24 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel", "setuptools_scm"] # Assurez-vous que setuptools_scm est là
 build-backend = "setuptools.build_meta"
 
-
 [tool.setuptools_scm]
-write_to = "saur_client/_version.py" 
+write_to = "saur_client/_version.py"
+local_scheme = "no-guess-dev" # Optionnel : pour gérer les versions de développement
 
 [project]
 name = "saur_client"
-version = "0.1.4"
+dynamic = ["version"]
 description = "Client Python pour interagir avec l'API SAUR"
 readme = "README.md"
 requires-python = ">=3.8"
-license = { file = "LICENSE" } 
+license = { file = "LICENSE" }
 authors = [
     { name = "Cekage Dave", email = "github@cekage.net" }
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",  
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
@@ -31,3 +31,4 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["."]
+
