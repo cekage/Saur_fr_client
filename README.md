@@ -4,7 +4,7 @@
 [![PyPI version](https://badge.fury.io/py/saur_client.svg)](https://badge.fury.io/py/saur_client)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## Français
+## Français/French
 
 **Client Python pour interagir avec l'API SAUR**
 
