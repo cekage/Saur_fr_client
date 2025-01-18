@@ -1,6 +1,6 @@
 # GIT
 
-##Lister les commit : 
+## Lister les commit : 
 ```bash
 k@penguin:/tmp/Saur_fr_client main(1)* ± git log --pretty=oneline 
 6d495601dc57856d709bb8eb47fe27687b400134 (HEAD -> main) mise à jour diverse / linting
@@ -10,7 +10,7 @@ b6afa7fb5cb53f59d65a68c03bcd2b80deee6103 mise à jour diverse
 0be2ec07978331a5d8a8e24f31e078016320c50d structuration
 86fc36099ef93cbb314532f03c86df9608e6f672 Initial commit
 ```
-##Attacher un tag :
+## Attacher un tag :
 ```bash
 k@penguin:/tmp/Saur_fr_client main(1)* 128 ± git tag -a 0.1.4 6d4956  -m 'ma version 0.1.4'
 ```
@@ -26,7 +26,7 @@ k@penguin:/tmp/Saur_fr_client main(1)* 129 ± git tag -d 0.1.4
 Deleted tag '0.1.4' (was 2a0cf03)
 ```
 
-##Pousser un tag sur github
+## Pousser un tag sur github
 ```k@penguin:/tmp/Saur_fr_client main(1)* ± git push origin 0.1.4
 Enumerating objects: 10, done.
 Counting objects: 100% (10/10), done.
