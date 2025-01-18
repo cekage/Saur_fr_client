@@ -32,3 +32,17 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["."]
 
+[tool.coverage.report]
+exclude_also = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "def __repr__",
+    "def __eq__",
+    "def __len__",
+    "def __lt__",
+    "def __gt__",
+    "return NotImplemented",
+    "if TYPE_CHECKING:",
+    "logger.debug\\(.*",
+    "\\.{3}",
+]
