@@ -2,9 +2,13 @@
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+
+[tool.setuptools_scm]
+write_to = "saur_client/_version.py" 
+
 [project]
 name = "saur_client"
-version = "0.1.2"
+version = "0.1.4"
 description = "Client Python pour interagir avec l'API SAUR"
 readme = "README.md"
 requires-python = ">=3.8"
