@@ -1,0 +1,26 @@
+# Répertoire des distributions
+dist/
+
+# Métadonnées de build générées par setuptools
+*.egg-info/
+*.eggs/
+
+# Cache Python compilé
+__pycache__/
+*.pyc
+*.pyo
+
+# Fichiers de log
+*.log
+
+# Virtualenv
+.env/
+venv/
+
+# Configurations IDE
+.idea/
+.vscode/
+
+# Configurations spécifiques au système d'exploitation
+.DS_Store
+Thumbs.db
