@@ -70,6 +70,10 @@ class SaurClient:
             + "/deli/section_subscriptions/{default_section_id}/"
             + "delivery_points"
         )
+        _LOGGER.debug(
+            "Login %s Password %s, dev_mode %s", login, password, dev_mode, self.base_url
+        )
+
 
     async def _async_request(
         self, method: str, url: str, payload: Optional[Dict[str, Any]] = None
