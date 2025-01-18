@@ -1,6 +1,7 @@
 # saur_client
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=cekage_Saur_fr_client&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=cekage_Saur_fr_client)
+[![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
 [![PyPI version](https://badge.fury.io/py/saur_client.svg)](https://badge.fury.io/py/saur_client)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)  <!-- Remplacez par votre licence -->
 
