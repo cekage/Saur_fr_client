@@ -73,7 +73,7 @@ class SaurClient:
             + "delivery_points"
         )
         _LOGGER.debug(
-            "Login %s Password %s, dev_mode %s", login, password, dev_mode, self.base_url
+            "Login %s Password %s, dev_mode %s", login, password, dev_mode,
         )
 
 
