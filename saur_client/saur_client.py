@@ -11,7 +11,6 @@ import aiohttp
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
 
-
 BASE_SAUR = "https://apib2c.azure.saurclient.fr"
 BASE_DEV = "http://localhost:8080"
 USER_AGENT = (
@@ -19,10 +18,8 @@ USER_AGENT = (
     + " (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
 )
 
-
 class SaurApiError(Exception):
     """Exception personnalisée pour les erreurs de l'API SAUR."""
-
 
 class SaurClient:
     """Client pour interagir avec l'API SAUR."""
@@ -87,6 +84,8 @@ class SaurClient:
             password,
             dev_mode,
         )
+        # Création de la session aiohttp
+        self.session = aiohttp.ClientSession()
 
     async def _async_request(
         self, method: str, url: str, payload: Optional[Dict[str, Any]] = None
@@ -117,14 +116,14 @@ class SaurClient:
             2
         ):  # Tente la requête jusqu'à 2 fois (1 initiale + 1 après reauth)
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.request(
-                        method, url, json=payload, headers=headers
-                    ) as response:
-                        response.raise_for_status()
-                        data = await response.json()
-                        _LOGGER.debug(f"Response from {url}: {data}")
-                        return data
+                # Utilisation de la session aiohttp persistante
+                async with self.session.request(
+                    method, url, json=payload, headers=headers
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
+                    _LOGGER.debug(f"Response from {url}: {data}")
+                    return data
             except aiohttp.ClientResponseError as err:
                 if err.status == 401 and attempt == 0:
                     _LOGGER.warning("Réponse 401, tentative de ré-authentification.")
@@ -190,3 +189,8 @@ class SaurClient:
         """Récupère les points de livraison."""
         url = self.delivery_url.format(default_section_id=self.default_section_id)
         return await self._async_request(method="GET", url=url)
+
+    async def close_session(self) -> None:
+        """Ferme la session aiohttp."""
+        if self.session:
+            await self.session.close()

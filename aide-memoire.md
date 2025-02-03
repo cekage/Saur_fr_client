@@ -27,7 +27,8 @@ Deleted tag '0.1.4' (was 2a0cf03)
 ```
 
 ## Pousser un tag sur github
-```k@penguin:/tmp/Saur_fr_client main(1)* ± git push origin 0.1.4
+```bash
+k@penguin:/tmp/Saur_fr_client main(1)* ± git push origin 0.1.4
 Enumerating objects: 10, done.
 Counting objects: 100% (10/10), done.
 Delta compression using up to 4 threads
@@ -41,7 +42,7 @@ To github.com:cekage/Saur_fr_client.git
 
 # Pypi
 ## Build
-```
+```bash
 k@penguin:/tmp/Saur_fr_client main(1)* 130 ± python3 -m build
 * Creating isolated environment: venv+pip...
 * Installing packages in isolated environment:
@@ -52,7 +53,7 @@ Successfully built saur_client-0.1.4.tar.gz and saur_client-0.1.4-py3-none-any.w
 ```
 ## Push (testpypi)
 Le token est dans bitwarden
-```
+```bash
 k@penguin:/tmp/Saur_fr_client main(1)* 130 ± twine upload --repository testpypi dist/* 
 Uploading distributions to https://test.pypi.org/legacy/
 Enter your API token: 
