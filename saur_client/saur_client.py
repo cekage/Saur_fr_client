@@ -118,7 +118,7 @@ class SaurClient:
         headers = self.headers.copy()
         if self.access_token:
             headers["Authorization"] = f"Bearer {self.access_token}"
-        
+
         # Version sécurisée des headers pour le logging
         safe_headers = {k: str(v) for k, v in headers.items()}
 
@@ -127,7 +127,7 @@ class SaurClient:
             method,
             url,
             payload,
-            safe_headers  # On passe safe_headers au lieu de headers
+            safe_headers,
         )
 
         for attempt in range(max_retries + 1):
@@ -168,11 +168,17 @@ class SaurClient:
                     return data
 
             except aiohttp.ClientResponseError as err:
-                raise SaurApiError(f"Erreur API SAUR ({url}): {err}") from err
+                # On ne passe plus l'erreur originale à SaurApiError
+                message = f"Erreur API SAUR ({url}): status: {err.status}, message: {err.message}"
+                raise SaurApiError(message)
             except aiohttp.ClientError as err:
-                raise SaurApiError(f"Erreur API SAUR ({url}): {err}") from err
+                # On extrait le message de l'erreur
+                message = f"Erreur API SAUR ({url}): {str(err)}"
+                raise SaurApiError(message)
             except json.JSONDecodeError as err:
-                raise SaurApiError(f"Erreur décodage JSON ({url}): {err}") from err
+                # On extrait le message de l'erreur
+                message = f"Erreur décodage JSON ({url}): {str(err)}"
+                raise SaurApiError(message)
 
         raise SaurApiError(
             f"Échec de la requête après {max_retries + 1} tentatives (incluant la ré-authentification)."
