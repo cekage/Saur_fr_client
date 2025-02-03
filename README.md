@@ -25,34 +25,35 @@ Voici un exemple basique d'utilisation de la librairie :
 
 ```python
 import asyncio
+import json
 from saur_client.saur_client import SaurClient
 
 async def main():
     """Exemple d'utilisation de la librairie saur_client."""
-    client = SaurClient(login="votre_login", password="votre_mot_de_passe")
-
     try:
-        await client.authenticate()
-        print("Authentification réussie !")
+        with open("credentials.json", "r") as f:
+            credentials = json.load(f)
+    except FileNotFoundError:
+        print("Erreur : le fichier credentials.json est introuvable.")
+        print("Créez un fichier credentials.json avec la structure suivante :")
+        print('{"login": "votre_login", "mdp": "votre_mot_de_passe", "token": "votre_token", "unique_id": "votre_unique_id"}')
+        print("Les champs 'token' et 'unique_id' sont optionnels.")
+        return
+    
+    # Les valeurs "" pour token et unique_id forceront une authentification
+    async with SaurClient(
+        login=credentials.get("login"),
+        password=credentials.get("mdp"),
+        token=credentials.get("token", ""),
+        unique_id=credentials.get("unique_id", "")
+    ) as client:
+        try:
+            # Récupérer les points de livraison
+            delivery_points = await client.get_deliverypoints_data()
+            print("Points de livraison:", delivery_points)
 
-        # Récupérer les données hebdomadaires
-        weekly_data = await client.get_weekly_data(year=2024, month=5, day=15)
-        print("Données hebdomadaires:", weekly_data)
-
-        # Récupérer les données mensuelles
-        monthly_data = await client.get_monthly_data(year=2024, month=5)
-        print("Données mensuelles:", monthly_data)
-
-        # Récupérer les dernières données connues
-        last_data = await client.get_lastknown_data()
-        print("Dernières données connues:", last_data)
-
-        # Récupérer les points de livraison
-        delivery_points = await client.get_deliverypoints_data()
-        print("Points de livraison:", delivery_points)
-
-    except Exception as e:
-        print(f"Une erreur s'est produite : {e}")
+        except Exception as e:
+            print(f"Une erreur s'est produite : {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -61,10 +62,30 @@ if __name__ == "__main__":
 **Explication :**
 
 1. **Importation :** Importez la classe `SaurClient` depuis le package `saur_client`.
-2. **Instanciation :** Créez une instance de `SaurClient` en fournissant votre `login` et `password` SAUR.
-3. **Authentification :** Appelez la méthode `authenticate()` pour obtenir un token d'accès.
+2. **Instanciation :** Créez une instance de `SaurClient` en fournissant votre `login`, `password`, et optionnellement un `token` et `unique_id` SAUR.
+    *   Si vous fournissez un `token` valide et un `unique_id`, l'authentification sera ignorée.
+    *   Si `token` ou `unique_id` sont manquants ou invalides, le client s'authentifiera automatiquement.
+3. **`async with` :** Utilisez `async with` pour gérer la session du client. La session sera automatiquement fermée à la fin du bloc.
 4. **Récupération des données :** Utilisez les méthodes `get_weekly_data()`, `get_monthly_data()`, `get_lastknown_data()`, et `get_deliverypoints_data()` pour récupérer les informations souhaitées.
 5. **Gestion des erreurs :** Enveloppez votre code dans un bloc `try...except` pour gérer les éventuelles exceptions.
+
+**Gestion avancée des requêtes**
+
+La méthode `_async_request` de `SaurClient` supporte les paramètres suivants :
+
+*   `max_retries` (int) : Le nombre maximum de tentatives de ré-authentification en cas d'erreur 401 ou 403 (par défaut : 3).
+*   `backoff_factor` (float) : Le facteur multiplicateur pour le délai entre chaque tentative (par défaut : 2).
+
+Ces paramètres peuvent être modifiés lors d'un appel à une méthode `get_xxx_data` :
+
+```python
+# Exemple avec get_weekly_data
+weekly_data = await client.get_weekly_data(year=2024, month=5, day=15, max_retries=5, backoff_factor=1.5)
+```
+
+**Implémentation de référence**
+
+Le fichier [`simple_test.py`](./simple_test.py) dans le dépôt GitHub fournit une implémentation de référence simple pour l'utilisation de `saur_client`.
 
 ### Documentation
 
@@ -76,11 +97,11 @@ Les contributions sont les bienvenues ! Si vous souhaitez améliorer `saur_clien
 
 ### Licence
 
-Ce projet est sous licence [MIT License](LICENSE) - consultez le fichier [LICENSE](LICENSE) pour plus de détails.
+Ce projet est sous licence \[MIT License](LICENSE) - consultez le fichier [LICENSE](LICENSE) pour plus de détails.
 
 ### Remerciements
 
-Wife and kids, for everything ! 
+Wife and kids, for everything !
 
 ---
 
@@ -104,34 +125,35 @@ Here's a basic example of how to use the library:
 
 ```python
 import asyncio
+import json
 from saur_client.saur_client import SaurClient
 
 async def main():
     """Example of using the saur_client library."""
-    client = SaurClient(login="your_login", password="your_password")
-
     try:
-        await client.authenticate()
-        print("Authentication successful!")
+        with open("credentials.json", "r") as f:
+            credentials = json.load(f)
+    except FileNotFoundError:
+        print("Error: credentials.json file not found.")
+        print("Create a credentials.json file with the following structure:")
+        print('{"login": "your_login", "mdp": "your_password", "token": "your_token", "unique_id": "your_unique_id"}')
+        print("The 'token' and 'unique_id' fields are optional.")
+        return
 
-        # Retrieve weekly data
-        weekly_data = await client.get_weekly_data(year=2024, month=5, day=15)
-        print("Weekly data:", weekly_data)
+    # Empty strings "" for token and unique_id will force authentication
+    async with SaurClient(
+        login=credentials.get("login"),
+        password=credentials.get("mdp"),
+        token=credentials.get("token", ""),
+        unique_id=credentials.get("unique_id", "")
+    ) as client:
+        try:
+            # Retrieve delivery points
+            delivery_points = await client.get_deliverypoints_data()
+            print("Delivery points:", delivery_points)
 
-        # Retrieve monthly data
-        monthly_data = await client.get_monthly_data(year=2024, month=5)
-        print("Monthly data:", monthly_data)
-
-        # Retrieve the latest known data
-        last_data = await client.get_lastknown_data()
-        print("Latest known data:", last_data)
-
-        # Retrieve delivery points
-        delivery_points = await client.get_deliverypoints_data()
-        print("Delivery points:", delivery_points)
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -140,10 +162,30 @@ if __name__ == "__main__":
 **Explanation:**
 
 1. **Importing:** Import the `SaurClient` class from the `saur_client` package.
-2. **Instantiation:** Create an instance of `SaurClient` by providing your SAUR `login` and `password`.
-3. **Authentication:** Call the `authenticate()` method to obtain an access token.
+2. **Instantiation:** Create an instance of `SaurClient` by providing your SAUR `login`, `password`, and optionally a `token` and `unique_id`.
+    *   If you provide a valid `token` and `unique_id`, authentication will be skipped.
+    *   If `token` or `unique_id` are missing or invalid, the client will authenticate automatically.
+3. **`async with`:** Use `async with` to manage the client's session. The session will be automatically closed at the end of the block.
 4. **Data Retrieval:** Use the `get_weekly_data()`, `get_monthly_data()`, `get_lastknown_data()`, and `get_deliverypoints_data()` methods to retrieve the desired information.
 5. **Error Handling:** Wrap your code in a `try...except` block to handle potential exceptions.
+
+**Advanced Request Management**
+
+The `_async_request` method of `SaurClient` supports the following parameters:
+
+*   `max_retries` (int): The maximum number of re-authentication attempts in case of a 401 or 403 error (default: 3).
+*   `backoff_factor` (float): The multiplier for the delay between each attempt (default: 2).
+
+These parameters can be modified when calling a `get_xxx_data` method:
+
+```python
+# Example with get_weekly_data
+weekly_data = await client.get_weekly_data(year=2024, month=5, day=15, max_retries=5, backoff_factor=1.5)
+```
+
+**Reference Implementation**
+
+The [`simple_test.py`](./simple_test.py) file in the GitHub repository provides a simple reference implementation for using `saur_client`.
 
 ### Documentation
 
@@ -155,8 +197,13 @@ Contributions are welcome! If you'd like to improve `saur_client`, feel free to 
 
 ### License
 
-This project is licensed under the [MIT License](LICENSE) - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the \[MIT License](LICENSE) - see the [LICENSE](LICENSE) file for details.
 
 ### Acknowledgements
 
-Wife and kids, for everything ! 
+Wife and kids, for everything !
+```
+
+J'ai simplifié l'exemple de code, ajouté des informations sur les paramètres `token` et `unique_id`, et précisé que `simple_test.py` est une implémentation de référence. J'ai également ajouté la section sur la gestion avancée des requêtes, expliquant `max_retries` et `backoff_factor`.
+
+N'hésite pas à me faire part de tes commentaires ou suggestions d'amélioration !
