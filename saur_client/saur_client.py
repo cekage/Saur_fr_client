@@ -90,6 +90,58 @@ class SaurClient:
         # Initialisation de la session dès le __init__
         self.session = aiohttp.ClientSession()
 
+    async def _authenticate(self) -> None:
+        """Authentifie le client et récupère les informations. Fonction interne."""
+        payload = {
+            "username": self.login,
+            "password": self.password,
+            "client_id": "frontjs-client",
+            "grant_type": "password",
+            "scope": "api-scope",
+            "isRecaptchaV3": True,
+            "captchaToken": False,
+        }
+
+        headers = self.headers.copy()  # On utilise les headers de base, sans Authorization
+
+        _LOGGER.debug(
+            "Authenticating to %s, payload: %s, headers: %s",
+            self.token_url,
+            payload,
+            headers,
+        )
+
+        try:
+            async with self.session.post(
+                self.token_url, json=payload, headers=headers
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
+
+                if (
+                    data
+                    and data.get("token", {}).get("access_token")
+                    and data.get("defaultSectionId")
+                ):
+                    self.access_token = data.get("token", {}).get("access_token")
+                    self.default_section_id = data.get("defaultSectionId")
+                    _LOGGER.info("Authentification réussie.")
+                else:
+                    _LOGGER.error("Réponse d'authentification invalide : %s", data)
+                    raise SaurApiError(
+                        "L'authentification a échoué : données invalides."
+                    )
+
+        except aiohttp.ClientResponseError as err:
+            message = f"Erreur API SAUR lors de l'authentification ({self.token_url}): status: {err.status}, message: {err.message}"
+            raise SaurApiError(message) from err
+        except aiohttp.ClientError as err:
+            message = f"Erreur API SAUR lors de l'authentification ({self.token_url}): {str(err)}"
+            raise SaurApiError(message) from err
+        except json.JSONDecodeError as err:
+            message = f"Erreur décodage JSON lors de l'authentification ({self.token_url}): {str(err)}"
+            raise SaurApiError(message) from err
+
     async def _async_request(
         self,
         method: str,
@@ -131,6 +183,7 @@ class SaurClient:
         )
 
         for attempt in range(max_retries + 1):
+            # On vérifie ici que le token et l'ID sont définis
             if not self.access_token or not self.default_section_id:
                 await self._authenticate()
                 headers["Authorization"] = f"Bearer {self.access_token}"
@@ -148,12 +201,17 @@ class SaurClient:
                                 attempt + 1,
                                 max_retries,
                             )
+                            self.access_token = (
+                                None
+                            )  # On réinitialise le token pour forcer une nouvelle authentification
                             await self._authenticate()
                             headers["Authorization"] = f"Bearer {self.access_token}"
 
                             # Calcul du délai avant la prochaine tentative (backoff exponentiel)
                             delay = backoff_factor**attempt
-                            _LOGGER.debug(f"Attente de {delay:.2f} secondes avant la prochaine tentative.")
+                            _LOGGER.debug(
+                                f"Attente de {delay:.2f} secondes avant la prochaine tentative."
+                            )
                             await asyncio.sleep(delay)
                             continue
                         else:
@@ -168,42 +226,20 @@ class SaurClient:
                     return data
 
             except aiohttp.ClientResponseError as err:
-                # On ne passe plus l'erreur originale à SaurApiError
-                message = f"Erreur API SAUR ({url}): status: {err.status}, message: {err.message}"
-                raise SaurApiError(message)
+                message = (
+                    f"Erreur API SAUR ({url}): status: {err.status}, message: {err.message}"
+                )
+                raise SaurApiError(message) from err
             except aiohttp.ClientError as err:
-                # On extrait le message de l'erreur
                 message = f"Erreur API SAUR ({url}): {str(err)}"
-                raise SaurApiError(message)
+                raise SaurApiError(message) from err
             except json.JSONDecodeError as err:
-                # On extrait le message de l'erreur
                 message = f"Erreur décodage JSON ({url}): {str(err)}"
-                raise SaurApiError(message)
+                raise SaurApiError(message) from err
 
         raise SaurApiError(
             f"Échec de la requête après {max_retries + 1} tentatives (incluant la ré-authentification)."
         )
-
-    async def _authenticate(self) -> None:
-        """Authentifie le client et récupère les informations. Fonction interne."""
-        payload = {
-            "username": self.login,
-            "password": self.password,
-            "client_id": "frontjs-client",
-            "grant_type": "password",
-            "scope": "api-scope",
-            "isRecaptchaV3": True,
-            "captchaToken": False,
-        }
-        data = await self._async_request(
-            method="POST", url=self.token_url, payload=payload
-        )
-        if data:
-            self.access_token = data.get("token", {}).get("access_token")
-            self.default_section_id = data.get("defaultSectionId")
-            _LOGGER.info("Authentification réussie.")
-        else:
-            raise SaurApiError("L'authentification a échoué.")
 
     async def get_weekly_data(
         self, year: int, month: int, day: int
