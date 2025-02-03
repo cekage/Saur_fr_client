@@ -6,6 +6,7 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
+import asyncio
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ class SaurClient:
     delivery_url: str
 
     def __init__(
-        self, login: str, password: str, dev_mode: bool = False,
+        self, login: str, password: str, unique_id: str = "", dev_mode: bool = False,
         token: str = ""
     ) -> None:
         """Initialise le client SAUR.
@@ -39,6 +40,7 @@ class SaurClient:
         Args:
             login: L'identifiant pour l'API SAUR.
             password: Le mot de passe pour l'API SAUR.
+            unique_id: L'identifiant unique du compteur.
             dev_mode: Indique si l'on utilise l'environnement de
                       développement (True) ou non (False).
                       Par défaut, la valeur est False (environnement de production).
@@ -47,7 +49,7 @@ class SaurClient:
         self.login = login
         self.password = password
         self.access_token: str = token
-        self.default_section_id: Optional[str] = None
+        self.default_section_id: str = unique_id
         self.dev_mode = dev_mode
         self.base_url = BASE_SAUR if not self.dev_mode else BASE_DEV
         self.headers: Dict[str, str] = {
@@ -79,16 +81,22 @@ class SaurClient:
             + "delivery_points"
         )
         _LOGGER.debug(
-            "Login %s Password %s, dev_mode %s",
+            "Login %s Password %s, unique_id %s, dev_mode %s",
             login,
             password,
+            unique_id,
             dev_mode,
         )
-        # Création de la session aiohttp
+        # Initialisation de la session dès le __init__
         self.session = aiohttp.ClientSession()
 
     async def _async_request(
-        self, method: str, url: str, payload: Optional[Dict[str, Any]] = None
+        self,
+        method: str,
+        url: str,
+        payload: Optional[Dict[str, Any]] = None,
+        max_retries: int = 3,
+        backoff_factor: float = 2,
     ) -> Optional[Dict[str, Any]]:
         """Fonction générique pour les requêtes HTTP avec gestion de la ré-authentification.
 
@@ -97,6 +105,8 @@ class SaurClient:
             url: L'URL de l'API à interroger.
             payload: Les données à envoyer dans le corps de la
                      requête (pour les méthodes comme POST).
+            max_retries: Le nombre maximum de tentatives de ré-authentification.
+            backoff_factor: Le facteur d'augmentation du délai entre chaque tentative.
 
         Returns:
             Les données JSON de la réponse si la requête est réussie, sinon None.
@@ -112,39 +122,56 @@ class SaurClient:
             "Request %s to %s, payload: %s, headers: %s", method, url, payload, headers
         )
 
-        for attempt in range(
-            2
-        ):  # Tente la requête jusqu'à 2 fois (1 initiale + 1 après reauth)
+        for attempt in range(max_retries + 1):
+            if not self.access_token or not self.default_section_id:
+                await self._authenticate()
+                headers["Authorization"] = f"Bearer {self.access_token}"
+
             try:
-                # Utilisation de la session aiohttp persistante
                 async with self.session.request(
                     method, url, json=payload, headers=headers
                 ) as response:
+                    # Gestion des erreurs 401 et 403 uniquement
+                    if response.status == 401 or response.status == 403:
+                        if attempt < max_retries:
+                            _LOGGER.warning(
+                                "Réponse %s, tentative de ré-authentification (tentative %s/%s).",
+                                response.status,
+                                attempt + 1,
+                                max_retries,
+                            )
+                            await self._authenticate()
+                            headers["Authorization"] = f"Bearer {self.access_token}"
+
+                            # Calcul du délai avant la prochaine tentative (backoff exponentiel)
+                            delay = backoff_factor**attempt
+                            _LOGGER.debug(f"Attente de {delay:.2f} secondes avant la prochaine tentative.")
+                            await asyncio.sleep(delay)
+                            continue
+                        else:
+                            _LOGGER.error(
+                                "Réponse %s, nombre maximum de tentatives de ré-authentification atteint.",
+                                response.status,
+                            )
+
                     response.raise_for_status()
                     data = await response.json()
                     _LOGGER.debug(f"Response from {url}: {data}")
                     return data
+
             except aiohttp.ClientResponseError as err:
-                if err.status == 401 and attempt == 0:
-                    _LOGGER.warning("Réponse 401, tentative de ré-authentification.")
-                    await self.authenticate()
-                    # Mise à jour du token dans les headers pour la prochaine tentative
-                    headers["Authorization"] = f"Bearer {self.access_token}"
-                else:
-                    raise SaurApiError(f"Erreur API SAUR ({url}): {err}") from err
+                raise SaurApiError(f"Erreur API SAUR ({url}): {err}") from err
             except aiohttp.ClientError as err:
                 raise SaurApiError(f"Erreur API SAUR ({url}): {err}") from err
             except json.JSONDecodeError as err:
                 raise SaurApiError(f"Erreur décodage JSON ({url}): {err}") from err
 
-        # Si on arrive ici après 2 tentatives et une erreur 401, on lève une exception
         raise SaurApiError(
-            "Échec de la requête après 2 tentatives "
-            + "(incluant la ré-authentification)."
+            f"Échec de la requête après {max_retries + 1} tentatives (incluant la ré-authentification)."
         )
 
-    async def authenticate(self) -> None:
-        """Authentifie le client et récupère les informations."""
+    async def _authenticate(self) -> None:
+        """Authentifie le client et récupère les informations. Fonction interne."""
         payload = {
             "username": self.login,
             "password": self.password,
@@ -192,5 +219,15 @@ class SaurClient:
 
     async def close_session(self) -> None:
         """Ferme la session aiohttp."""
+        await self.__aexit__(None, None, None)
+
+    async def __aenter__(self):
+        """Initialise la session aiohttp si nécessaire."""
+        # La session est déjà initialisée dans __init__
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Ferme la session aiohttp."""
         if self.session:
             await self.session.close()
+            self.session = None

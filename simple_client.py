@@ -28,17 +28,17 @@ except (json.JSONDecodeError, ValueError) as e:
     exit()
 
 async def main():
-    client = None  # Initialisation de client à None
+    client = None
     try:
-        client = SaurClient(login=login, password=password, token=token)
-        if unique_id:
-            client.default_section_id = unique_id
-        await client.authenticate()
+        client = SaurClient(login=login, password=password, token=token, unique_id=unique_id)
 
-        credentials["token"] = client.access_token
-        credentials["unique_id"] = client.default_section_id
-        with open("credentials.json", "w") as f:
-            json.dump(credentials, f, indent=4)
+        # Mise à jour du token et unique_id dans le fichier credentials.json
+        # (uniquement si vides)
+        if not credentials["token"] or not credentials["unique_id"]:
+            credentials["token"] = client.access_token
+            credentials["unique_id"] = client.default_section_id
+            with open("credentials.json", "w") as f:
+                json.dump(credentials, f, indent=4)
 
         delivery_points = await client.get_deliverypoints_data()
         print(delivery_points)
