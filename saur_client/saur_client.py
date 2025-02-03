@@ -5,8 +5,8 @@
 import json
 import logging
 from typing import Any, Dict, Optional
-
 import asyncio
+
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
@@ -118,8 +118,16 @@ class SaurClient:
         headers = self.headers.copy()
         if self.access_token:
             headers["Authorization"] = f"Bearer {self.access_token}"
+        
+        # Version sécurisée des headers pour le logging
+        safe_headers = {k: str(v) for k, v in headers.items()}
+
         _LOGGER.debug(
-            "Request %s to %s, payload: %s, headers: %s", method, url, payload, headers
+            "Request %s to %s, payload: %s, headers: %s",
+            method,
+            url,
+            payload,
+            safe_headers  # On passe safe_headers au lieu de headers
         )
 
         for attempt in range(max_retries + 1):
