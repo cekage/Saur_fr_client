@@ -19,8 +19,10 @@ USER_AGENT = (
     + " (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
 )
 
+
 class SaurApiError(Exception):
     """Exception personnalisée pour les erreurs de l'API SAUR."""
+
 
 class SaurClient:
     """Client pour interagir avec l'API SAUR."""
@@ -32,8 +34,12 @@ class SaurClient:
     delivery_url: str
 
     def __init__(
-        self, login: str, password: str, unique_id: str = "", dev_mode: bool = False,
-        token: str = ""
+        self,
+        login: str,
+        password: str,
+        unique_id: str = "",
+        dev_mode: bool = False,
+        token: str = "",
     ) -> None:
         """Initialise le client SAUR.
 
@@ -57,7 +63,7 @@ class SaurClient:
             "Content-Type": "application/json",
             "Pragma": "no-cache",
             "Referer": "https://mon-espace.saurclient.fr/",
-            "Origin": "https://mon-espace.saurclient.fr/"
+            "Origin": "https://mon-espace.saurclient.fr/",
         }
         self.token_url = self.base_url + "/admin/v2/auth"
         self.weekly_url = (
@@ -102,7 +108,9 @@ class SaurClient:
             "captchaToken": False,
         }
 
-        headers = self.headers.copy()  # On utilise les headers de base, sans Authorization
+        headers = (
+            self.headers.copy()
+        )  # On utilise les headers de base, sans Authorization
 
         _LOGGER.debug(
             "Authenticating to %s, payload: %s, headers: %s",
@@ -117,17 +125,26 @@ class SaurClient:
             ) as response:
                 response.raise_for_status()
                 data = await response.json()
-
+                _LOGGER.debug("Authentification réussie.")
                 if (
                     data
                     and data.get("token", {}).get("access_token")
                     and data.get("defaultSectionId")
                 ):
-                    self.access_token = data.get("token", {}).get("access_token")
+                    self.access_token = data.get("token", {}).get(
+                        "access_token"
+                    )
                     self.default_section_id = data.get("defaultSectionId")
-                    _LOGGER.info("Authentification réussie.")
+                    _LOGGER.debug(
+                        "Authentification réussie. Réponse: %s",
+                        json.dumps(
+                            data, indent=2
+                        ),  # JSON formaté avec indentation
+                    )
                 else:
-                    _LOGGER.error("Réponse d'authentification invalide : %s", data)
+                    _LOGGER.error(
+                        "Réponse d'authentification invalide : %s", data
+                    )
                     raise SaurApiError(
                         "L'authentification a échoué : données invalides."
                     )
@@ -167,6 +184,7 @@ class SaurClient:
             SaurApiError: En cas d'erreur lors de la requête API,
                           y compris après tentative de ré-authentification.
         """
+
         headers = self.headers.copy()
         if self.access_token:
             headers["Authorization"] = f"Bearer {self.access_token}"
@@ -201,11 +219,11 @@ class SaurClient:
                                 attempt + 1,
                                 max_retries,
                             )
-                            self.access_token = (
-                                None
-                            )  # On réinitialise le token pour forcer une nouvelle authentification
+                            self.access_token = None  # On réinitialise le token pour forcer une nouvelle authentification
                             await self._authenticate()
-                            headers["Authorization"] = f"Bearer {self.access_token}"
+                            headers["Authorization"] = (
+                                f"Bearer {self.access_token}"
+                            )
 
                             # Calcul du délai avant la prochaine tentative (backoff exponentiel)
                             delay = backoff_factor**attempt
@@ -226,9 +244,7 @@ class SaurClient:
                     return data
 
             except aiohttp.ClientResponseError as err:
-                message = (
-                    f"Erreur API SAUR ({url}): status: {err.status}, message: {err.message}"
-                )
+                message = f"Erreur API SAUR ({url}): status: {err.status}, message: {err.message}"
                 raise SaurApiError(message) from err
             except aiohttp.ClientError as err:
                 message = f"Erreur API SAUR ({url}): {str(err)}"
@@ -246,11 +262,16 @@ class SaurClient:
     ) -> Optional[Dict[str, Any]]:
         """Récupère les données hebdomadaires."""
         url = self.weekly_url.format(
-            default_section_id=self.default_section_id, year=year, month=month, day=day
+            default_section_id=self.default_section_id,
+            year=year,
+            month=month,
+            day=day,
         )
         return await self._async_request(method="GET", url=url)
 
-    async def get_monthly_data(self, year: int, month: int) -> Optional[Dict[str, Any]]:
+    async def get_monthly_data(
+        self, year: int, month: int
+    ) -> Optional[Dict[str, Any]]:
         """Récupère les données mensuelles."""
         url = self.monthly_url.format(
             default_section_id=self.default_section_id, year=year, month=month
@@ -264,7 +285,13 @@ class SaurClient:
 
     async def get_deliverypoints_data(self) -> Optional[Dict[str, Any]]:
         """Récupère les points de livraison."""
-        url = self.delivery_url.format(default_section_id=self.default_section_id)
+        # Authentification si default_section_id n'est pas défini
+        if not self.default_section_id:
+            await self._authenticate()
+
+        url = self.delivery_url.format(
+            default_section_id=self.default_section_id
+        )
         return await self._async_request(method="GET", url=url)
 
     async def close_session(self) -> None:
