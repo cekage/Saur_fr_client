@@ -3,10 +3,9 @@
 try:
     from ._version import __version__
 except ImportError:
-    __version__ = (
-        "0.0.0+unknown"  # Pour les cas où le package n'est pas installé via setuptools
-    )
+    # Pour les cas où le package n'est pas installé via setuptools
+    __version__ = "0.0.0+unknown"
 
 from .saur_client import SaurApiError, SaurClient
 
-__all__ = ["SaurApiError", "SaurClient"]
+__all__ = ["SaurApiError", "SaurClient", "SaurResponse"]
