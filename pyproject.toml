@@ -25,6 +25,8 @@ dependencies = [
     "aiohttp",
 ]
 
+
+
 [project.urls]
 "Homepage" = "https://github.com/cekage/Saur_fr_client"
 "Bug Tracker" = "http://github.com/cekage/Saur_fr_client/issues"
