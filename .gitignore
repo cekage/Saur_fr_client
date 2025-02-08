@@ -27,3 +27,5 @@ Thumbs.db
 
 # Propre à l'utilisateur
 credentials.json
+.ruff_cache
+.mypy_cache
