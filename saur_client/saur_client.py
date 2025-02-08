@@ -5,7 +5,6 @@
 import json
 import logging
 from typing import Any, Dict, Optional
-import asyncio
 
 import aiohttp
 
@@ -18,6 +17,8 @@ USER_AGENT = (
     "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36"
     + " (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
 )
+
+SaurResponse = dict[str, Any] | None
 
 
 class SaurApiError(Exception):
@@ -58,7 +59,7 @@ class SaurClient:
         self.default_section_id: str = unique_id
         self.dev_mode: bool = dev_mode
         self.base_url: str = BASE_SAUR if not self.dev_mode else BASE_DEV
-        self.headers: Dict[str, str] = {
+        self.headers: dict[str, str] = {
             "User-Agent": USER_AGENT,
             "Content-Type": "application/json",
             "Pragma": "no-cache",
@@ -98,19 +99,15 @@ class SaurClient:
 
     async def _authenticate(self) -> None:
         """Authentifie le client et récupère les informations. Fonction interne."""
-        payload: Dict[str, Any] = {
-            "username": self.login,
-            "password": self.password,
-            "client_id": "frontjs-client",
-            "grant_type": "password",
-            "scope": "api-scope",
-            "isRecaptchaV3": True,
-            "captchaToken": False,
-        }
 
-        headers: Dict[str, str] = (
+        headers: dict[str, str] = (
             self.headers.copy()
         )  # On utilise les headers de base, sans Authorization
+
+        # Utilisation de _build_auth_payload pour construire le payload
+        payload: dict[str, Any] = _build_auth_payload(
+            self.login, self.password
+        )
 
         _LOGGER.debug(
             "Authenticating to %s, payload: %s, headers: %s",
@@ -120,34 +117,13 @@ class SaurClient:
         )
 
         try:
-            async with self.session.post(
-                self.token_url, json=payload, headers=headers
-            ) as response:
-                response.raise_for_status()
-                data: Dict[str, Any] = await response.json()
-                _LOGGER.debug("Authentification réussie.")
-                if (
-                    data
-                    and data.get("token", {}).get("access_token")
-                    and data.get("defaultSectionId")
-                ):
-                    self.access_token = data.get("token", {}).get(
-                        "access_token"
-                    )
-                    self.default_section_id = str(data.get("defaultSectionId"))
-                    _LOGGER.debug(
-                        "Authentification réussie. Réponse: %s",
-                        json.dumps(
-                            data, indent=2
-                        ),  # JSON formaté avec indentation
-                    )
-                else:
-                    _LOGGER.error(
-                        "Réponse d'authentification invalide : %s", data
-                    )
-                    raise SaurApiError(
-                        "L'authentification a échoué : données invalides."
-                    )
+            # Utilisation de _execute_http_request pour effectuer la requête
+            data: dict[str, Any] = await _execute_http_request(
+                self.session, "POST", self.token_url, headers, payload
+            )
+
+            # Appel à la fonction de traitement de la réponse
+            _process_auth_response(self, data)
 
         except aiohttp.ClientResponseError as err:
             message = f"Erreur API SAUR lors de l'authentification ({self.token_url}): status: {err.status}, message: {err.message}"
@@ -163,10 +139,10 @@ class SaurClient:
         self,
         method: str,
         url: str,
-        payload: Optional[Dict[str, Any]] = None,
+        payload: SaurResponse = None,
         max_retries: int = 3,
         backoff_factor: float = 2,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> SaurResponse:
         """Fonction générique pour les requêtes HTTP avec gestion de la ré-authentification.
 
         Args:
@@ -185,12 +161,12 @@ class SaurClient:
                           y compris après tentative de ré-authentification.
         """
 
-        headers: Dict[str, str] = self.headers.copy()
+        headers: dict[str, str] = self.headers.copy()
         if self.access_token:
             headers["Authorization"] = f"Bearer {self.access_token}"
 
         # Version sécurisée des headers pour le logging
-        safe_headers: Dict[str, str] = {k: str(v) for k, v in headers.items()}
+        safe_headers: dict[str, str] = {k: str(v) for k, v in headers.items()}
 
         _LOGGER.debug(
             "Request %s to %s, payload: %s, headers: %s",
@@ -207,51 +183,19 @@ class SaurClient:
                 headers["Authorization"] = f"Bearer {self.access_token}"
 
             try:
-                async with self.session.request(
-                    method, url, json=payload, headers=headers
-                ) as response:
-                    # Gestion des erreurs 401 et 403 uniquement
-                    if response.status == 401 or response.status == 403:
-                        if attempt < max_retries:
-                            _LOGGER.warning(
-                                "Réponse %s, tentative de ré-authentification (tentative %s/%s).",
-                                response.status,
-                                attempt + 1,
-                                max_retries,
-                            )
-                            self.access_token = None  # On réinitialise le token pour forcer une nouvelle authentification
-                            await self._authenticate()
-                            headers["Authorization"] = (
-                                f"Bearer {self.access_token}"
-                            )
+                data: SaurResponse = await _execute_http_request(
+                    self.session, method, url, headers, payload
+                )
+                return data
 
-                            # Calcul du délai avant la prochaine tentative (backoff exponentiel)
-                            delay: float = backoff_factor**attempt
-                            _LOGGER.debug(
-                                f"Attente de {delay:.2f} secondes avant la prochaine tentative."
-                            )
-                            await asyncio.sleep(delay)
-                            continue
-                        else:
-                            _LOGGER.error(
-                                "Réponse %s, nombre maximum de tentatives de ré-authentification atteint.",
-                                response.status,
-                            )
-
-                    response.raise_for_status()
-                    data: Optional[Dict[str, Any]] = await response.json()
-                    _LOGGER.debug(f"Response from {url}: {data}")
-                    return data
-
-            except aiohttp.ClientResponseError as err:
-                message = f"Erreur API SAUR ({url}): status: {err.status}, message: {err.message}"
-                raise SaurApiError(message) from err
-            except aiohttp.ClientError as err:
-                message = f"Erreur API SAUR ({url}): {str(err)}"
-                raise SaurApiError(message) from err
-            except json.JSONDecodeError as err:
-                message = f"Erreur décodage JSON ({url}): {str(err)}"
-                raise SaurApiError(message) from err
+            except SaurApiError as err:
+                # Tentative de ré-authentification
+                if not await _retry_authentication(
+                    self, err, attempt, max_retries, headers
+                ):
+                    # Si _retry_authentication retourne False (ou lève une
+                    # exception), on propage l'erreur
+                    raise
 
         raise SaurApiError(
             f"Échec de la requête après {max_retries + 1} tentatives (incluant la ré-authentification)."
@@ -259,7 +203,7 @@ class SaurClient:
 
     async def get_weekly_data(
         self, year: int, month: int, day: int
-    ) -> Optional[Dict[str, Any]]:
+    ) -> SaurResponse:
         """Récupère les données hebdomadaires."""
         url: str = self.weekly_url.format(
             default_section_id=self.default_section_id,
@@ -269,21 +213,21 @@ class SaurClient:
         )
         return await self._async_request(method="GET", url=url)
 
-    async def get_monthly_data(
-        self, year: int, month: int
-    ) -> Optional[Dict[str, Any]]:
+    async def get_monthly_data(self, year: int, month: int) -> SaurResponse:
         """Récupère les données mensuelles."""
         url: str = self.monthly_url.format(
             default_section_id=self.default_section_id, year=year, month=month
         )
         return await self._async_request(method="GET", url=url)
 
-    async def get_lastknown_data(self) -> Optional[Dict[str, Any]]:
+    async def get_lastknown_data(self) -> SaurResponse:
         """Récupère les dernières données connues."""
-        url: str = self.last_url.format(default_section_id=self.default_section_id)
+        url: str = self.last_url.format(
+            default_section_id=self.default_section_id
+        )
         return await self._async_request(method="GET", url=url)
 
-    async def get_deliverypoints_data(self) -> Optional[Dict[str, Any]]:
+    async def get_deliverypoints_data(self) -> SaurResponse:
         """Récupère les points de livraison."""
         # Authentification si default_section_id n'est pas défini
         if not self.default_section_id:
@@ -308,3 +252,111 @@ class SaurClient:
         if self.session:
             await self.session.close()
             self.session = None
+
+
+async def _execute_http_request(
+    session: aiohttp.ClientSession,
+    method: str,
+    url: str,
+    headers: dict[str, str],
+    payload: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    """Exécute la requête HTTP et gère les erreurs HTTP."""
+    try:
+        async with session.request(
+            method, url, json=payload, headers=headers
+        ) as response:
+            response.raise_for_status()
+            data: dict[str, Any] = await response.json()
+            _LOGGER.debug(f"Response from {url}: {data}")
+            return data
+    except aiohttp.ClientResponseError as err:
+        message = f"Erreur API SAUR ({url}): status: {err.status}, message: {err.message}"
+        raise SaurApiError(message) from err
+    except aiohttp.ClientError as err:
+        message = f"Erreur API SAUR ({url}): {str(err)}"
+        raise SaurApiError(message) from err
+    except json.JSONDecodeError as err:
+        message = f"Erreur décodage JSON ({url}): {str(err)}"
+        raise SaurApiError(message) from err
+
+
+def _build_auth_payload(login: str, password: str) -> dict[str, Any]:
+    """Construit le payload pour la requête d'authentification."""
+    payload: dict[str, Any] = {
+        "username": login,
+        "password": password,
+        "client_id": "frontjs-client",
+        "grant_type": "password",
+        "scope": "api-scope",
+        "isRecaptchaV3": True,
+        "captchaToken": False,
+    }
+    return payload
+
+
+def _process_auth_response(self: "SaurClient", data: dict[str, Any]) -> None:
+    """Traite la réponse d'authentification et met à jour l'état de l'objet SaurClient."""
+    if (
+        data
+        and data.get("token", {}).get("access_token")
+        and data.get("defaultSectionId")
+    ):
+        self.access_token = data.get("token", {}).get("access_token")
+        self.default_section_id = str(data.get("defaultSectionId"))
+        _LOGGER.debug(
+            "Authentification réussie. Réponse: %s",
+            json.dumps(data, indent=2),  # JSON formaté avec indentation
+        )
+    else:
+        _LOGGER.error("Réponse d'authentification invalide : %s", data)
+        raise SaurApiError("L'authentification a échoué : données invalides.")
+
+
+async def _retry_authentication(
+    self: "SaurClient",
+    err: SaurApiError,
+    attempt: int,
+    max_retries: int,
+    headers: dict[str, str],
+) -> bool:
+    """Gère la ré-authentification en cas d'erreur 401 ou 403.
+
+    Args:
+        self: L'instance de SaurClient.
+        err: L'exception SaurApiError à gérer.
+        attempt: Le numéro de la tentative actuelle.
+        max_retries: Le nombre maximum de tentatives.
+        headers: Les headers de la requête (pour mise à jour du token).
+
+    Returns:
+        True si la ré-authentification a réussi et la requête peut être retentée, False sinon.
+
+    Raises:
+        SaurApiError: Si le nombre maximum de tentatives est atteint
+        ou si l'erreur n'est pas une erreur 401 ou 403.
+    """
+    if "status: 401" in str(err) or "status: 403" in str(err):
+        if attempt < max_retries:
+            _LOGGER.warning(
+                "Réponse %s, tentative de ré-authentification (tentative %s/%s).",
+                err,
+                attempt + 1,
+                max_retries,
+            )
+            # On réinitialise le token pour forcer une nouvelle authentification
+            self.access_token = None
+            await self._authenticate()
+            headers["Authorization"] = f"Bearer {self.access_token}"
+
+            return True  # Indique que la requête peut être retentée
+        else:
+            _LOGGER.error(
+                "Réponse %s, nombre maximum de tentatives de ré-authentification atteint.",
+                err,
+            )
+            raise SaurApiError(
+                f"Nombre maximum de tentatives de ré-authentification atteint: {err}"
+            ) from err
+    else:
+        raise err  # On relève l'erreur si ce n'est pas une erreur 401/403
