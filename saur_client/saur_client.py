@@ -52,12 +52,12 @@ class SaurClient:
                       Par défaut, la valeur est False (environnement de production).
             token: Le token pour économiser un auth().
         """
-        self.login = login
-        self.password = password
-        self.access_token: str = token
+        self.login: str = login
+        self.password: str = password
+        self.access_token: str | None = token
         self.default_section_id: str = unique_id
-        self.dev_mode = dev_mode
-        self.base_url = BASE_SAUR if not self.dev_mode else BASE_DEV
+        self.dev_mode: bool = dev_mode
+        self.base_url: str = BASE_SAUR if not self.dev_mode else BASE_DEV
         self.headers: Dict[str, str] = {
             "User-Agent": USER_AGENT,
             "Content-Type": "application/json",
@@ -65,23 +65,23 @@ class SaurClient:
             "Referer": "https://mon-espace.saurclient.fr/",
             "Origin": "https://mon-espace.saurclient.fr/",
         }
-        self.token_url = self.base_url + "/admin/v2/auth"
-        self.weekly_url = (
+        self.token_url: str = self.base_url + "/admin/v2/auth"
+        self.weekly_url: str = (
             self.base_url
             + "/deli/section_subscription/{default_section_id}/"
             + "consumptions/weekly?year={year}&month={month}&day={day}"
         )
-        self.monthly_url = (
+        self.monthly_url: str = (
             self.base_url
             + "/deli/section_subscription/{default_section_id}/"
             + "consumptions/monthly?year={year}&month={month}"
         )
-        self.last_url = (
+        self.last_url: str = (
             self.base_url
             + "/deli/section_subscriptions/{default_section_id}"
             + "/meter_indexes/last"
         )
-        self.delivery_url = (
+        self.delivery_url: str = (
             self.base_url
             + "/deli/section_subscriptions/{default_section_id}/"
             + "delivery_points"
@@ -94,11 +94,11 @@ class SaurClient:
             dev_mode,
         )
         # Initialisation de la session dès le __init__
-        self.session = aiohttp.ClientSession()
+        self.session: aiohttp.ClientSession = aiohttp.ClientSession()
 
     async def _authenticate(self) -> None:
         """Authentifie le client et récupère les informations. Fonction interne."""
-        payload = {
+        payload: Dict[str, Any] = {
             "username": self.login,
             "password": self.password,
             "client_id": "frontjs-client",
@@ -108,7 +108,7 @@ class SaurClient:
             "captchaToken": False,
         }
 
-        headers = (
+        headers: Dict[str, str] = (
             self.headers.copy()
         )  # On utilise les headers de base, sans Authorization
 
@@ -124,7 +124,7 @@ class SaurClient:
                 self.token_url, json=payload, headers=headers
             ) as response:
                 response.raise_for_status()
-                data = await response.json()
+                data: Dict[str, Any] = await response.json()
                 _LOGGER.debug("Authentification réussie.")
                 if (
                     data
@@ -134,7 +134,7 @@ class SaurClient:
                     self.access_token = data.get("token", {}).get(
                         "access_token"
                     )
-                    self.default_section_id = data.get("defaultSectionId")
+                    self.default_section_id = str(data.get("defaultSectionId"))
                     _LOGGER.debug(
                         "Authentification réussie. Réponse: %s",
                         json.dumps(
@@ -185,12 +185,12 @@ class SaurClient:
                           y compris après tentative de ré-authentification.
         """
 
-        headers = self.headers.copy()
+        headers: Dict[str, str] = self.headers.copy()
         if self.access_token:
             headers["Authorization"] = f"Bearer {self.access_token}"
 
         # Version sécurisée des headers pour le logging
-        safe_headers = {k: str(v) for k, v in headers.items()}
+        safe_headers: Dict[str, str] = {k: str(v) for k, v in headers.items()}
 
         _LOGGER.debug(
             "Request %s to %s, payload: %s, headers: %s",
@@ -226,7 +226,7 @@ class SaurClient:
                             )
 
                             # Calcul du délai avant la prochaine tentative (backoff exponentiel)
-                            delay = backoff_factor**attempt
+                            delay: float = backoff_factor**attempt
                             _LOGGER.debug(
                                 f"Attente de {delay:.2f} secondes avant la prochaine tentative."
                             )
@@ -239,7 +239,7 @@ class SaurClient:
                             )
 
                     response.raise_for_status()
-                    data = await response.json()
+                    data: Optional[Dict[str, Any]] = await response.json()
                     _LOGGER.debug(f"Response from {url}: {data}")
                     return data
 
@@ -261,7 +261,7 @@ class SaurClient:
         self, year: int, month: int, day: int
     ) -> Optional[Dict[str, Any]]:
         """Récupère les données hebdomadaires."""
-        url = self.weekly_url.format(
+        url: str = self.weekly_url.format(
             default_section_id=self.default_section_id,
             year=year,
             month=month,
@@ -273,14 +273,14 @@ class SaurClient:
         self, year: int, month: int
     ) -> Optional[Dict[str, Any]]:
         """Récupère les données mensuelles."""
-        url = self.monthly_url.format(
+        url: str = self.monthly_url.format(
             default_section_id=self.default_section_id, year=year, month=month
         )
         return await self._async_request(method="GET", url=url)
 
     async def get_lastknown_data(self) -> Optional[Dict[str, Any]]:
         """Récupère les dernières données connues."""
-        url = self.last_url.format(default_section_id=self.default_section_id)
+        url: str = self.last_url.format(default_section_id=self.default_section_id)
         return await self._async_request(method="GET", url=url)
 
     async def get_deliverypoints_data(self) -> Optional[Dict[str, Any]]:
@@ -289,7 +289,7 @@ class SaurClient:
         if not self.default_section_id:
             await self._authenticate()
 
-        url = self.delivery_url.format(
+        url: str = self.delivery_url.format(
             default_section_id=self.default_section_id
         )
         return await self._async_request(method="GET", url=url)
