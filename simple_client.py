@@ -9,6 +9,9 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
+_LOGGER = logging.getLogger(__name__)
+_LOGGER.setLevel(logging.DEBUG)
+
 try:
     with open("credentials.json", "r") as f:
         credentials = json.load(f)
@@ -16,6 +19,7 @@ try:
         password = credentials.get("mdp")
         token = credentials.get("token", "")
         unique_id = credentials.get("unique_id", "")
+        _LOGGER.debug(f"\ntoken in json : {token}\n")
 
         if not login or not password:
             raise ValueError(
@@ -39,18 +43,19 @@ async def main():
     client = None
     try:
         client = SaurClient(
-            login=login, password=password, token=token, unique_id=unique_id
+            login=login,
+            password=password,
+            token=token,
+            unique_id=unique_id,
+            dev_mode=False,
         )
+        # delivery_points = await client.get_monthly_data(2024, 12)
+        delivery_points = await client.get_deliverypoints_data()
 
-        # Mise à jour du token et unique_id dans le fichier credentials.json
-        # (uniquement si vides)
-        if not credentials["token"] or not credentials["unique_id"]:
-            credentials["token"] = client.access_token
-            credentials["unique_id"] = client.default_section_id
-            with open("credentials.json", "w") as f:
-                json.dump(credentials, f, indent=4)
-
-        delivery_points = await client.get_monthly_data(2024, 12)
+        credentials["token"] = client.access_token
+        credentials["unique_id"] = client.default_section_id
+        with open("credentials.json", "w") as f:
+            json.dump(credentials, f, indent=4)
         print(delivery_points)
     except Exception as e:
         print(f"Une erreur est survenue : {e}")
