@@ -4,7 +4,8 @@
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, NewType
+
 
 import aiohttp
 
@@ -18,7 +19,11 @@ USER_AGENT = (
     + " (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
 )
 
-SaurResponse = dict[str, Any] | None
+SaurResponse = dict[str, Any]
+SaurResponseDelivery = NewType("SaurResponseDelivery", SaurResponse)
+SaurResponseLastKnow = NewType("SaurResponseLastKnow", SaurResponse)
+SaurResponseMonthly = NewType("SaurResponseMonthly", SaurResponse)
+SaurResponseWeekly = NewType("SaurResponseWeekly", SaurResponse)
 
 
 class SaurApiError(Exception):
@@ -105,9 +110,7 @@ class SaurClient:
         )  # On utilise les headers de base, sans Authorization
 
         # Utilisation de _build_auth_payload pour construire le payload
-        payload: dict[str, Any] = _build_auth_payload(
-            self.login, self.password
-        )
+        payload: dict[str, Any] = _build_auth_payload(self.login, self.password)
 
         _LOGGER.debug(
             "Authenticating to %s, payload: %s, headers: %s",
@@ -139,7 +142,7 @@ class SaurClient:
         self,
         method: str,
         url: str,
-        payload: SaurResponse = None,
+        payload: dict[str, Any] | None = None,
         max_retries: int = 3,
         backoff_factor: float = 2,
     ) -> SaurResponse:
@@ -198,12 +201,13 @@ class SaurClient:
                     raise
 
         raise SaurApiError(
-            f"Échec de la requête après {max_retries + 1} tentatives (incluant la ré-authentification)."
+            f"""Échec de la requête après {max_retries + 1} tentatives
+                (incluant la ré-authentification)."""
         )
 
     async def get_weekly_data(
         self, year: int, month: int, day: int
-    ) -> SaurResponse:
+    ) -> SaurResponseWeekly:
         """Récupère les données hebdomadaires."""
         url: str = self.weekly_url.format(
             default_section_id=self.default_section_id,
@@ -211,32 +215,38 @@ class SaurClient:
             month=month,
             day=day,
         )
-        return await self._async_request(method="GET", url=url)
+        data: SaurResponse = await self._async_request(method="GET", url=url)
+        response: SaurResponseWeekly = SaurResponseWeekly(data)
+        return response
 
-    async def get_monthly_data(self, year: int, month: int) -> SaurResponse:
+    async def get_monthly_data(
+        self, year: int, month: int
+    ) -> SaurResponseMonthly:
         """Récupère les données mensuelles."""
         url: str = self.monthly_url.format(
             default_section_id=self.default_section_id, year=year, month=month
         )
-        return await self._async_request(method="GET", url=url)
+        data: SaurResponse = await self._async_request(method="GET", url=url)
+        response: SaurResponseMonthly = SaurResponseMonthly(data)
+        return response
 
-    async def get_lastknown_data(self) -> SaurResponse:
+    async def get_lastknown_data(self) -> SaurResponseLastKnow:
         """Récupère les dernières données connues."""
-        url: str = self.last_url.format(
-            default_section_id=self.default_section_id
-        )
-        return await self._async_request(method="GET", url=url)
+        url: str = self.last_url.format(default_section_id=self.default_section_id)
+        data: SaurResponse = await self._async_request(method="GET", url=url)
+        response: SaurResponseLastKnow = SaurResponseLastKnow(data)
+        return response
 
-    async def get_deliverypoints_data(self) -> SaurResponse:
+    async def get_deliverypoints_data(self) -> SaurResponseDelivery:
         """Récupère les points de livraison."""
         # Authentification si default_section_id n'est pas défini
-        if not self.default_section_id:
-            await self._authenticate()
+        #if not self.default_section_id:
+        #    await self._authenticate()
 
-        url: str = self.delivery_url.format(
-            default_section_id=self.default_section_id
-        )
-        return await self._async_request(method="GET", url=url)
+        url: str = self.delivery_url.format(default_section_id=self.default_section_id)
+        data: SaurResponse = await self._async_request(method="GET", url=url)
+        response: SaurResponseDelivery = SaurResponseDelivery(data)
+        return response
 
     async def close_session(self) -> None:
         """Ferme la session aiohttp."""
@@ -259,7 +269,7 @@ async def _execute_http_request(
     method: str,
     url: str,
     headers: dict[str, str],
-    payload: Optional[dict[str, Any]] = None,
+    payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Exécute la requête HTTP et gère les erreurs HTTP."""
     try:
@@ -267,11 +277,22 @@ async def _execute_http_request(
             method, url, json=payload, headers=headers
         ) as response:
             response.raise_for_status()
-            data: dict[str, Any] = await response.json()
-            _LOGGER.debug(f"Response from {url}: {data}")
-            return data
+            # data: dict[str, Any] = await response.json()
+            data: Any = await response.json()
+
+            if not isinstance(data, dict):
+                raise SaurApiError(
+                    f"""Réponse JSON inattendue : le type doit
+                    être un dictionnaire, mais c'est {type(data)}"""
+                )
+
+            data_dict: SaurResponse = data
+            _LOGGER.debug(f"Response from {url}: {data_dict}")
+            return data_dict
+
     except aiohttp.ClientResponseError as err:
-        message = f"Erreur API SAUR ({url}): status: {err.status}, message: {err.message}"
+        message = f"""Erreur API SAUR ({url}): status: {err.status}, 
+            message: {err.message}"""
         raise SaurApiError(message) from err
     except aiohttp.ClientError as err:
         message = f"Erreur API SAUR ({url}): {str(err)}"
