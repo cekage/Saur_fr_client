@@ -49,8 +49,9 @@ async def main():
             unique_id=unique_id,
             dev_mode=False,
         )
-        # delivery_points = await client.get_monthly_data(2024, 12)
         delivery_points = await client.get_deliverypoints_data()
+        #delivery_points = await client.get_monthly_data(2025, 2)
+        delivery_points = await client.get_monthly_data(2024, 9)
 
         credentials["token"] = client.access_token
         credentials["unique_id"] = client.default_section_id

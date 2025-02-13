@@ -63,7 +63,7 @@ class SaurClient:
         self.access_token: str | None = token
         self.default_section_id: str = unique_id
         self.dev_mode: bool = dev_mode
-        self.base_url: str = BASE_SAUR if not self.dev_mode else BASE_DEV
+        self.base_url: str = BASE_DEV if self.dev_mode else BASE_SAUR
         self.headers: dict[str, str] = {
             "User-Agent": USER_AGENT,
             "Content-Type": "application/json",
@@ -311,7 +311,7 @@ def _build_auth_payload(login: str, password: str) -> dict[str, Any]:
         "grant_type": "password",
         "scope": "api-scope",
         "isRecaptchaV3": True,
-        "captchaToken": False,
+        "captchaToken": True,
     }
     return payload
 
