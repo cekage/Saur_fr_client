@@ -4,7 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
 write_to = "saur_client/_version.py"
-local_scheme = "no-guess-dev" # Optionnel : pour gérer les versions de développement
+version_scheme = "only-version"
+local_scheme = "no-local-version"
 
 [project]
 name = "saur_client"
