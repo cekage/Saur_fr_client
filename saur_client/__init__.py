@@ -14,6 +14,7 @@ from .saur_client import (
     SaurResponseLastKnow,
     SaurResponseMonthly,
     SaurResponseWeekly,
+    SaurResponseContracts
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "SaurResponseLastKnow",
     "SaurResponseMonthly",
     "SaurResponseWeekly",
+    "SaurResponseContracts"
 ]
