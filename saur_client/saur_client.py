@@ -282,6 +282,7 @@ class SaurClient:
         # Authentification si sectionid est None/vide
         if not sectionid:
             await self._authenticate()
+            sectionid = self.default_section_id
 
         url: str = self.delivery_url.format(
             default_section_id=sectionid)
