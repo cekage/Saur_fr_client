@@ -232,11 +232,13 @@ class SaurClient:
         )
 
     async def get_weekly_data(
-        self, year: int, month: int, day: int
+        self, year: int, month: int, day: int, section_id: str | None = None
     ) -> SaurResponseWeekly:
         """Récupère les données hebdomadaires."""
+        used_section_id = section_id if section_id else self.default_section_id
+
         url: str = self.weekly_url.format(
-            default_section_id=self.default_section_id,
+            default_section_id=used_section_id,
             year=year,
             month=month,
             day=day,
@@ -246,32 +248,43 @@ class SaurClient:
         return response
 
     async def get_monthly_data(
-        self, year: int, month: int
+        self, year: int, month: int, section_id: str | None = None
     ) -> SaurResponseMonthly:
         """Récupère les données mensuelles."""
+        used_section_id = section_id if section_id else self.default_section_id
+
         url: str = self.monthly_url.format(
-            default_section_id=self.default_section_id, year=year, month=month
+            default_section_id=used_section_id, year=year, month=month
         )
         data: SaurResponse = await self._async_request(method="GET", url=url)
         response: SaurResponseMonthly = SaurResponseMonthly(data)
         return response
 
-    async def get_lastknown_data(self) -> SaurResponseLastKnow:
+    async def get_lastknown_data(
+        self, section_id: str | None = None
+    ) -> SaurResponseLastKnow:
         """Récupère les dernières données connues."""
+        used_section_id = section_id if section_id else self.default_section_id
+
         url: str = self.last_url.format(
-            default_section_id=self.default_section_id)
+            default_section_id=used_section_id)
         data: SaurResponse = await self._async_request(method="GET", url=url)
         response: SaurResponseLastKnow = SaurResponseLastKnow(data)
         return response
 
-    async def get_deliverypoints_data(self) -> SaurResponseDelivery:
+    async def get_deliverypoints_data(
+        self, section_id: str | None = None
+    ) -> SaurResponseDelivery:
         """Récupère les points de livraison."""
-        # Authentification si default_section_id n'est pas défini
-        if not self.default_section_id:
+        # Utilise section_id si fourni, sinon utilise self.default_section_id
+        sectionid = section_id if section_id else self.default_section_id
+
+        # Authentification si sectionid est None/vide
+        if not sectionid:
             await self._authenticate()
 
         url: str = self.delivery_url.format(
-            default_section_id=self.default_section_id)
+            default_section_id=sectionid)
         data: SaurResponse = await self._async_request(method="GET", url=url)
         response: SaurResponseDelivery = SaurResponseDelivery(data)
         return response
