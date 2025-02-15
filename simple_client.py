@@ -91,8 +91,7 @@ async def main():
             unique_id=unique_id,
             dev_mode=False,
         )
-        delivery_points = await client.get_contracts()
-        # delivery_points = await client.get_deliverypoints_data()
+        delivery_points = await client.get_deliverypoints_data()
         # delivery_points = await client.get_monthly_data(2025, 2)
         # delivery_points = await client.get_monthly_data(2024, 9)
 
@@ -102,11 +101,18 @@ async def main():
         
         with open("credentials.json", "w") as f:
             json.dump(credentials, f, indent=4)
-        print(delivery_points)
-
+        print("****************************")
+        chaine_json = json.dumps(credentials, indent=4)
+        pprint(chaine_json)
+        pprint(delivery_points)
+        print("****************************")
+        delivery_points = await client.get_contracts()
         subscription_data = extract_subscription_data(delivery_points)
         print
+        print("****************************")
         pprint(subscription_data)
+        chaine_json = json.dumps(subscription_data, indent=4)
+        print("****************************")
 
 
         # print
