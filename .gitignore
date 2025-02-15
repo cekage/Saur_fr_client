@@ -26,8 +26,9 @@ venv/
 Thumbs.db
 
 # Propre à l'utilisateur
-credentials.json
+credentials.json*
 .ruff_cache
 .mypy_cache
 monkeytype.sqlite3
 out/saur_client/saur_client.pyi
+
