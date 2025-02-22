@@ -89,15 +89,14 @@ async def main():
             password=password,
             token=token,
             unique_id=unique_id,
-            dev_mode=False,
+            dev_mode=True,
         )
         delivery_points = await client.get_deliverypoints_data()
-        # delivery_points = await client.get_monthly_data(2025, 2)
-        # delivery_points = await client.get_monthly_data(2024, 9)
 
         credentials["token"] = client.access_token
         credentials["unique_id"] = client.default_section_id
         credentials["clientId"] = client.clientId
+        sectionid=client.default_section_id
         
         with open("credentials.json", "w") as f:
             json.dump(credentials, f, indent=4)
@@ -111,17 +110,16 @@ async def main():
         print
         print("****************************")
         pprint(subscription_data)
-        chaine_json = json.dumps(subscription_data, indent=4)
         print("****************************")
+        delivery_points = await client.get_monthly_data(2025, 2)
+        delivery_points = await client.get_monthly_data(2025, 2, sectionid)
+        delivery_points = await client.get_weekly_data(2024, 9, 1)
+        delivery_points = await client.get_weekly_data(2024, 9, 1, sectionid)
+        delivery_points = await client.get_lastknown_data()
+        delivery_points = await client.get_lastknown_data(sectionid)
+        
 
 
-        # print
-        # for jsonclient in delivery_points["clients"]:
-        #     print(f"  Site: {jsonclient['clientReference']} - {jsonclient['contractName']}")
-        #     for account in jsonclient["customerAccounts"]:
-        #         print(f"    Compte: {account['reference']}")
-        #         for subscription in account["sectionSubscriptions"]:
-        #             print(f"      Compteur: {subscription['sectionSubscriptionId']} - Terminé: {subscription['isContractTerminated']}")
     except Exception as e:
         print(f"Une erreur est survenue : {e}")
     finally:

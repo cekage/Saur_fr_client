@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel", "setuptools_scm"] # Assurez-vous que setuptools_scm est là
+requires = ["setuptools>=61.0", "wheel", "setuptools_scm", "pyright"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
@@ -23,16 +23,13 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "aiohttp",
+    "aiohttp==3.11.11","attrs==24.2.0","propcache==0.2.1",
 ]
 
 
 [project.urls]
 "Homepage" = "https://github.com/cekage/Saur_fr_client"
 "Bug Tracker" = "http://github.com/cekage/Saur_fr_client/issues"
-
-[tool.setuptools.packages.find]
-where = ["."]
 
 [tool.coverage.report]
 exclude_also = [
@@ -48,3 +45,15 @@ exclude_also = [
     "logger.debug\\(.*",
     "\\.{3}",
 ]
+
+[tool.pyright]
+include = ["saur_client"]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+stubPath = "."
+
+[tool.setuptools.packages.find]
+include = ["saur_client*"]
+
+[tool.setuptools.package-data]
+saur_client = ["../typings/saur_client/*.pyi"]
