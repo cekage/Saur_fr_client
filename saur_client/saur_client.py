@@ -10,7 +10,7 @@ from typing import Any, NewType
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
-_LOGGER.setLevel(logging.DEBUG)
+
 
 BASE_SAUR = "https://apib2c.azure.saurclient.fr"
 BASE_DEV = "http://localhost:8080"
