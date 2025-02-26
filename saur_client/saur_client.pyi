@@ -1,7 +1,5 @@
 # (generated with --quick)
 
-import aiohttp
-import json
 import logging
 from typing import Any, Coroutine, Optional
 

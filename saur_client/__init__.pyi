@@ -1,7 +1,5 @@
 # (generated with --quick)
 
-from typing import Any, NewType
-
 from .saur_client import (
     SaurApiError as SaurApiError,
     SaurClient as SaurClient,
