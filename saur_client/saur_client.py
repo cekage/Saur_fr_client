@@ -4,10 +4,11 @@
 
 import json
 import logging
-from typing import Any, NewType
+from typing import Iterator, Any, NewType
 
 
 import aiohttp
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -310,7 +311,7 @@ class SaurClient:
         # La session est déjà initialisée dans __init__
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: None, exc_val: None, exc_tb: None) -> Iterator[None]:
         """Ferme la session aiohttp."""
         if self.session:
             await self.session.close()
@@ -415,7 +416,7 @@ async def _retry_authentication(
     """
     if "status: 401" in str(err) or "status: 403" in str(err):
         if attempt < max_retries:
-            _LOGGER.warning(
+            _LOGGER.debug(
                 "Réponse %s, tentative de ré-authentification (tentative %s/%s).",
                 err,
                 attempt + 1,
