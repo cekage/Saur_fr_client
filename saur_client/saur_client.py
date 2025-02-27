@@ -4,11 +4,10 @@
 
 import json
 import logging
-from typing import Iterator, Any, NewType
-
+from typing import Any, NewType, override
 
 import aiohttp
-
+from aiohttp import ClientSession
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +40,7 @@ class SaurClient:
     last_url: str
     delivery_url: str
 
+    @override
     def __init__(
         self,
         login: str,
@@ -98,8 +98,7 @@ class SaurClient:
             + "delivery_points"
         )
         self.contracts_url: str = (
-            self.base_url
-            + "/admin/users/v2/website_areas/{clientId}"
+            self.base_url + "/admin/users/v2/website_areas/{clientId}"
         )
         _LOGGER.debug(
             "Login %s Password %s, unique_id %s, dev_mode %s",
@@ -109,11 +108,11 @@ class SaurClient:
             dev_mode,
         )
         # Initialisation de la session dès le __init__
-        self.session: aiohttp.ClientSession = aiohttp.ClientSession()
+        self.session: ClientSession = ClientSession()
 
     async def _authenticate(self) -> None:
         """Authentifie le client"""
-        
+
         """
         Authentifie et récupère les informations.
         Fonction interne.
@@ -153,13 +152,13 @@ class SaurClient:
         except aiohttp.ClientError as err:
             message = (
                 "Erreur API SAUR lors de l'authentification "
-                f"({self.token_url}): {str(err)}"
+                f"({self.token_url}): {err!s}"
             )
             raise SaurApiError(message) from err
         except json.JSONDecodeError as err:
             message = (
                 "Erreur décodage JSON lors de l'authentification"
-                f" ({self.token_url}): {str(err)}"
+                f" ({self.token_url}): {err!s}"
             )
             raise SaurApiError(message) from err
 
@@ -267,8 +266,7 @@ class SaurClient:
         """Récupère les dernières données connues."""
         used_section_id = section_id if section_id else self.default_section_id
 
-        url: str = self.last_url.format(
-            default_section_id=used_section_id)
+        url: str = self.last_url.format(default_section_id=used_section_id)
         data: SaurResponse = await self._async_request(method="GET", url=url)
         response: SaurResponseLastKnow = SaurResponseLastKnow(data)
         return response
@@ -285,8 +283,7 @@ class SaurClient:
             await self._authenticate()
             sectionid = self.default_section_id
 
-        url: str = self.delivery_url.format(
-            default_section_id=sectionid)
+        url: str = self.delivery_url.format(default_section_id=sectionid)
         data: SaurResponse = await self._async_request(method="GET", url=url)
         response: SaurResponseDelivery = SaurResponseDelivery(data)
         return response
@@ -311,11 +308,13 @@ class SaurClient:
         # La session est déjà initialisée dans __init__
         return self
 
-    async def __aexit__(self, exc_type: None, exc_val: None, exc_tb: None) -> Iterator[None]:
+    async def __aexit__(
+        self, exc_type: None, exc_val: None, exc_tb: None
+    ) -> None:
         """Ferme la session aiohttp."""
         if self.session:
             await self.session.close()
-            self.session = None
+            # self.session = None
 
 
 async def _execute_http_request(
@@ -332,7 +331,7 @@ async def _execute_http_request(
         ) as response:
             response.raise_for_status()
             # data: dict[str, Any] = await response.json()
-            data: Any = await response.json()
+            data: dict[str, Any] | list[Any] = await response.json()
 
             if not isinstance(data, dict):
                 raise SaurApiError(
@@ -349,10 +348,10 @@ async def _execute_http_request(
             message: {err.message}"""
         raise SaurApiError(message) from err
     except aiohttp.ClientError as err:
-        message = f"Erreur API SAUR ({url}): {str(err)}"
+        message = f"Erreur API SAUR ({url}): {err!s}"
         raise SaurApiError(message) from err
     except json.JSONDecodeError as err:
-        message = f"Erreur décodage JSON ({url}): {str(err)}"
+        message = f"Erreur décodage JSON ({url}): {err!s}"
         raise SaurApiError(message) from err
 
 
@@ -372,7 +371,7 @@ def _build_auth_payload(login: str, password: str) -> dict[str, Any]:
 
 def _process_auth_response(self: "SaurClient", data: dict[str, Any]) -> None:
     """Traite la réponse d'authentification et
-        met à jour l'état de l'objet SaurClient."""
+    met à jour l'état de l'objet SaurClient."""
     if (
         data
         and data.get("token", {}).get("access_token")
@@ -417,7 +416,8 @@ async def _retry_authentication(
     if "status: 401" in str(err) or "status: 403" in str(err):
         if attempt < max_retries:
             _LOGGER.debug(
-                "Réponse %s, tentative de ré-authentification (tentative %s/%s).",
+                "Réponse %s, tentative de ré-authentification"
+                "(tentative %s/%s).",
                 err,
                 attempt + 1,
                 max_retries,
