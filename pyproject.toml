@@ -12,7 +12,7 @@ name = "saur_client"
 dynamic = ["version"]
 description = "Client Python pour interagir avec l'API SAUR"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 license = { file = "LICENSE" }
 authors = [
     { name = "Cekage Dave", email = "github@cekage.net" }
@@ -46,14 +46,70 @@ exclude_also = [
     "\\.{3}",
 ]
 
-[tool.pyright]
-include = ["saur_client"]
-pythonVersion = "3.13"
-typeCheckingMode = "strict"
-stubPath = "."
+
 
 [tool.setuptools.packages.find]
 include = ["saur_client*"]
 
 [tool.setuptools.package-data]
-saur_client = ["../typings/saur_client/*.pyi"]
+# saur_client = ["../.pytype/pyi/saur_client/*.pyi"]
+saur_client = ["saur_client/*.pyi"]
+
+[tool.isort]
+profile = "black"
+line_length = 80
+
+[tool.ruff]
+extend-exclude = ["*.pyi"]
+line-length = 80
+target-version = "py312"
+lint.select = [
+    "E", "F", "W",  # Erreurs, conventions de style, avertissements
+    "I",          # Importation et ordre (remplace pylint pour les imports)
+    "UP",           # Modernité Python (pyupgrade)
+    "ASYNC",        # Vérifications async
+    "RUF",          # Règles spécifiques à Ruff
+    "PLC", "PLE", "PLR", "PLW", #Pylint
+    "B", # Black
+    "C4", # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "PD9", # pandas-vet
+    "PT", # flake8-pytest-style
+    "S", # flake8-bandit,cl
+    "TCH" # typeguard
+]
+lint.ignore = [
+    "B904",
+    "PLC0414",
+    "PLW0603",
+    "D100", "D101", "D102", "D103", "D104", "D105", "D107", "D202", "D203", "D205", "D212", "D213", "D400", "D401", "D415", "D416", "D417",
+    "S101", "S105", "S106", "S107", "S311",
+    "PLR2004",
+    "TC001", "TC002", "TC003", "TC004",
+]
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+# mode hardcore:
+strict = true
+disallow_subclassing_any = true
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportUnusedImport = true
+include = ["saur_client"]
+stubPath = "."
